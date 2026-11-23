@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CouchCape</title>
+<meta name="description" content="CouchCape — a seated, controller-free hero adventure for Meta Quest. Fly, freeze, and outsmart villains with just your hands, eyes and voice.">
+<meta name="theme-color" content="#7cf4ff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="src/ui.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="intro">
+  <div class="card">
+    <h1><img src="assets/logo.svg" alt="CouchCape" class="logo"></h1>
+    <p class="tag">Sit back. Suit up. Fly.</p>
+    <p class="warn"><strong>Photosensitivity notice:</strong> this game contains light effects. All flashes are kept under safe limits, and you can reduce effects further below.</p>
+    <div class="opts">
+      <label><input type="checkbox" id="optReduce"> Reduce effects</label>
+      <label><input type="checkbox" id="optVoice" checked> Spoken guide (narration)</label>
+      <label><input type="checkbox" id="optHandsFree"> Hands-free mode (hold your gaze to act)</label>
+      <label><input type="checkbox" id="optPerf"> Performance mode (lighter scenery)</label>
+      <label>Comfort
+        <select id="optComfort">
+          <option value="comfortable">Comfortable (strong vignette, slow)</option>
+          <option value="moderate" selected>Moderate</option>
+          <option value="intense">Intense (no vignette)</option>
+        </select>
+      </label>
+      <label>Difficulty
+        <select id="optDiff">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+          <option value="expert">Expert</option>
+        </select>
+      </label>
+    </div>
+    <button id="enterXR" class="btn" disabled>Checking headset…</button>
+    <button id="enterDesk" class="btn alt">Play on this screen</button>
+    <p class="small">Seated play. Hands, eyes and voice. No controllers needed. · <a href="privacy/">Privacy</a></p>
+  </div>
+</div>
+<div id="deskHelp" hidden>Mouse: look · W/S: fly · Click/Space: power or select · T: travel map · 1–7: pick hero · C: cruise</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
