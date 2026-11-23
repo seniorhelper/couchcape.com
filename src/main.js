@@ -133,7 +133,7 @@ function ensureLevel(id) {
 }
 function setActiveWorld(id) {
   activeWorld = id;
-  { const d = DEST['world:' + id]; flight.cx = d && d.offset ? d.offset.x : 0; flight.cz = d && d.offset ? d.offset.z : 0; flight.bounds = id === 'aurelia' ? 420 : 480; }
+  { const d = DEST['world:' + id]; flight.cx = d && d.offset ? d.offset.x : 0; flight.cz = d && d.offset ? d.offset.z : 0; flight.bounds = id === 'aurelia' ? 420 : 480; flight.minY = id === 'paradox' ? -30 : 2; }
   if (city && city.root) city.root.visible = id === 'aurelia';
   for (const k in levelBuilt) if (levelBuilt[k].root) levelBuilt[k].root.visible = k === id;
   if (gfx && gfx.setPreset) {
@@ -293,7 +293,7 @@ bus.on('setVoice', on => setVoice(on));
 bus.on('say', ({ who, secs }) => { if (who === 'Odessa' || who === 'Glimmerling' || who === 'How your brain got tricked') music.duck(0.55, Math.min(secs, 8)); });
 bus.on('musicVol', v => music.setVolume(v));
 bus.on('heightOffset', v => { seat.position.y = v; });
-bus.on('perfMode', on => { if (on && qTier === 0) { qTier = 1; applyQuality(); } });
+bus.on('perfMode', on => { if (on && qTier === 0) { qTier = 1; applyQuality(); } else if (!on && qTier > 0) bus.emit('toast', 'Full scenery returns next time you start the game'); });
 bus.on('recenter', () => { _e.setFromQuaternion(camera.quaternion, 'YXZ'); flight.yawBias = _e.y; bus.emit('toast', 'View recentered'); });
 bus.on('exitGame', () => { menus.close(); const s = renderer.xr.getSession(); if (s) s.end(); else { $('intro').hidden = false; state = 'title'; } });
 const _e = new THREE.Euler();

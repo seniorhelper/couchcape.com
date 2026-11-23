@@ -98,12 +98,14 @@ export class ChoicePanel {
       g.fillStyle = '#10213a'; g.font = '700 46px Inter, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(o.label, 384, 112);
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
       const m = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.16), new THREE.MeshBasicMaterial({ map: t, depthTest: false, fog: false, toneMapped: false })); m.renderOrder = 996;
-      m.position.set(0, (options.length - 1) * 0.14 - i * 0.28, 0); // gap at gaze center m.userData = { gazeable: true, dwell: true, choice: o.value };
+      m.position.set(0, (options.length - 1) * 0.14 - i * 0.28, 0); // gap at gaze center
+      m.userData = { gazeable: true, dwell: true, choice: o.value };
       this.group.add(m); this.buttons.push(m);
     });
     const p = new THREE.Vector3(), f = new THREE.Vector3();
     this.camera.getWorldPosition(p); this.camera.getWorldDirection(f); f.y = 0; f.normalize();
-    this.group.position.copy(p).addScaledVector(f, 1.2); this.group.position.y += 0.12; // above the subtitle panel this.group.lookAt(p);
+    this.group.position.copy(p).addScaledVector(f, 1.2); this.group.position.y += 0.12; // above the subtitle panel
+    this.group.lookAt(p);
     this.group.visible = true; bus.emit('panelOpen');
   }
   hide() { this.group.visible = false; }

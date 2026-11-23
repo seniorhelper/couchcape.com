@@ -32,7 +32,7 @@ export class Heart {
   knockout() {
     this.comebacks--;
     bus.emit('knockout', this.comebacks);
-    if (this.comebacks < 0) { bus.emit('gameOverRestart'); this.reset(true); }
+    if (this.comebacks < 0) { bus.emit('gameOverRestart'); this.reset(true); this.invuln = 3; bus.emit('respawn'); bus.emit('hud', this); }
     else { this.hp = this.containers; this.invuln = 3; bus.emit('respawn'); bus.emit('hud', this); }
   }
   update(dt) { if (this.invuln > 0) this.invuln -= dt; }

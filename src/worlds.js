@@ -99,7 +99,10 @@ export class WorldRun {
   startZone() {
     const z = this.w.raids[this.zone];
     if (!z) return this.startMiniBoss();
-    this.ctx.raids.spawn(`${this.def.id}#${this.zone}`, z.center, z.foes || 5);
+    // keep the fight within reach (aim assist ~160 m; comfortable ~45 m): pull far zone centers toward the player
+    let c = z.center; const head = this.ctx.headPos(), dist = head.distanceTo(c);
+    if (dist > 55) c = head.clone().lerp(c, 45 / dist);
+    this.ctx.raids.spawn(`${this.def.id}#${this.zone}`, c, z.foes || 5);
     this.ctx.say(`${z.name || 'Echoes'} ahead. Seal them all!`);
   }
   onRaidClear(id) {

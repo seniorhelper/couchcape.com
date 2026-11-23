@@ -48,7 +48,7 @@ export class Flight {
     this.rig.position.addScaledVector(this.vel, dt);
     // soft world bounds + ground clearance
     const p = this.rig.position;
-    p.y = THREE.MathUtils.clamp(p.y, 2, 160);
+    p.y = THREE.MathUtils.clamp(p.y, this.minY ?? 2, 160);
     const dx = p.x - this.cx, dz = p.z - this.cz, r = Math.hypot(dx, dz); if (r > this.bounds) { p.x = this.cx + dx * this.bounds / r; p.z = this.cz + dz * this.bounds / r; }
 
     // vignette from speed + turning, scaled by comfort setting
