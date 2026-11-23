@@ -811,11 +811,11 @@ function buildTinker() {
   HB.add(tubeGeo([[0, -0.1, -0.008], [0, -0.13, -0.004], [0, -0.16, 0.0]], [0.036, 0.035, 0.05], { sides: 10, ref: [0, 0, 1], en: 0.95, capA: false }), SKIN);
   // freckles
   const fr = rng(77);
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 22; i++) {
     const s = i % 2 ? 1 : -1;
     const fx = s * (0.12 + fr() * 0.52), fy = -0.34 + fr() * 0.3 - (Math.abs(fx) < 0.2 ? 0.0 : 0);
     const q = headPoint(h, fx, fy - 0.0, 0.0006);
-    HB.add(new THREE.CircleGeometry(1, 5), 0xb3694a, basisM([q.n[0], q.n[1], q.n[2]], [0, 0, 1], q.p).multiply(mat([0, 0, 0], [Math.PI / 2, 0, fr() * 6], [0.0034 + fr() * 0.0016, 0.0034 + fr() * 0.0016, 1])));
+    HB.add(new THREE.CircleGeometry(1, 5), 0x9a5538, basisM([q.n[0], q.n[1], q.n[2]], [0, 0, 1], q.p).multiply(mat([0, 0, 0], [Math.PI / 2, 0, fr() * 6], [0.0048 + fr() * 0.0022, 0.0048 + fr() * 0.0022, 1])));
   }
   // hair
   const HR = new Bucket(113);
@@ -826,6 +826,7 @@ function buildTinker() {
   const headM = HB.mesh(Ms, 'skin', shift);
   const hairM = HR.mesh(Mc, 'cloth', shift);
   const lidG = new THREE.Group();
+  lidG.name = 'lids';
   lidG.position.set(shift[0], eye.ey + shift[1], eye.ez + shift[2]);
   const lidM = LB.mesh(Ms, 'skin');
   lidG.add(lidM);
@@ -876,7 +877,6 @@ function buildTinker() {
     }
     // shoulder pauldron + elbow guard
     br.add(new THREE.SphereGeometry(0.075, 12, 5, 0, Math.PI * 2, 0, 1.35), BRASS, mat([s * 0.022, 0.012, 0], [0, 0, s * -0.55], [1.05, 0.78, 1.0]));
-    br.add(new THREE.TorusGeometry(0.066, 0.008, 4, 14), BRASS2, mat([s * 0.022, 0.012, 0], [0, 0, s * -0.55]).multiply(mat([0, 0, 0], [Math.PI / 2, 0, 0], [1.05, 1, 0.78])));
     br.add(dome(0.05, 1, 1, 0.7, 8), BRASS, mat([E[0], E[1], E[2] - 0.045], [Math.PI, 0, 0]));
     orbLocal.push([oc[0] + sh[0], oc[1], oc[2]]);
     sk.xf = br.xf = null;
@@ -985,26 +985,32 @@ function featherRing(b, o) {
   }
 }
 const _flat = (g) => { g.userData.flat = true; return g; };
-function earGeo(w, h, d) {
-  const BL = [-w / 2, 0, 0], BR = [w / 2, 0, 0], T = [0.012, h, -d * 0.2], K0 = [0, 0, -d], K1 = [0.004, h * 0.5, -d * 0.85];
-  const tris = [[BL, T, K1], [BL, K1, K0], [BR, T, K1], [BR, K1, K0]];
+function orientGeo(tris, fn) {
   const pos = [];
-  for (const t of tris) for (const v of t) pos.push(...v);
+  for (const t of tris) {
+    const [a, b, c] = t;
+    const nx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]);
+    const ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+    const nz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+    const cx = (a[0] + b[0] + c[0]) / 3, cy = (a[1] + b[1] + c[1]) / 3, cz = (a[2] + b[2] + c[2]) / 3;
+    const flip = fn(nx, ny, nz, cx, cy, cz);
+    for (const v of (flip ? [a, c, b] : [a, b, c])) pos.push(...v);
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.computeVertexNormals();
   return _flat(g);
 }
+function earGeo(w, h, d) {
+  const BL = [-w / 2, 0, 0], BR = [w / 2, 0, 0], T = [0.012, h, -d * 0.2], K0 = [0, 0, -d], K1 = [0.004, h * 0.5, -d * 0.85];
+  const tris = [[BL, T, K1], [BL, K1, K0], [BR, T, K1], [BR, K1, K0]];
+  return orientGeo(tris, (nx, ny, nz) => nz < 0);
+}
 function snoutGeo() {
   const BTL = [-0.034, 0.036, 0.086], BTR = [0.034, 0.036, 0.086], BBL = [-0.05, -0.044, 0.07], BBR = [0.05, -0.044, 0.07];
   const M = [0, 0.05, 0.14], N = [0, -0.008, 0.222], LM = [0, -0.056, 0.15];
   const tris = [[BTL, N, M], [BTR, M, N], [BTL, M, BTR], [BTL, BBL, N], [BTR, N, BBR], [BBL, LM, N], [BBR, N, LM], [BBL, BBR, LM]];
-  const pos = [];
-  for (const t of tris) for (const v of t) pos.push(...v);
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return _flat(g);
+  return orientGeo(tris, (nx, ny, nz, cx, cy, cz) => nx * cx + ny * (cy - 0.0) + nz * (cz - 0.12) < 0);
 }
 function shardGeo(w, h, d, k = 0.35) {
   const V = [[0, 0, 0], [-w / 2, -h * k, 0], [w / 2, -h * k, 0], [0, -h, 0], [0, -h * k, d]];
@@ -1046,7 +1052,7 @@ function buildFold() {
   const group = new THREE.Group();
   const rig = new THREE.Group();
   group.add(rig);
-  const paper = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0, emissive: 0x4a463c, side: THREE.DoubleSide });
+  const paper = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0, emissive: 0x6a6558, side: THREE.DoubleSide });
   const glowMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.6, emissive: 0xff7a55, emissiveIntensity: 0.8, side: THREE.DoubleSide });
 
   /* ---- static body: legs, hips, torso core, shingled chest, collar */
@@ -1073,13 +1079,19 @@ function buildFold() {
   // collar ruff
   featherRing(body, { y: 1.55, rx: 0.2, rz: 0.15, n: 13, w: 0.15, h: 0.22, tilt: 0.75, colorFn: (a, i) => [i % 4 === 3 ? CHAR2 : IVORY, i % 4 === 3 ? IVORY : CHAR] });
   featherRing(body, { y: 1.6, rx: 0.13, rz: 0.1, n: 9, w: 0.12, h: 0.17, tilt: 0.55, phase: 0.3, colorFn: (a, i) => [i % 3 === 2 ? CHAR : IVORY2, i % 3 === 2 ? IVORY2 : PEACH] });
+  const sk = body;
+  for (let k = 0; k < 22; k++) {
+    const f = k / 21;
+    featherRing(sk, { y: 1.03 - f * 0.83, rx: 0.11 + f * 0.17, rz: 0.09 + f * 0.16, n: 11 + Math.round(f * 9), h: 0.24 + f * 0.2, tilt: 0.1 + f * 0.24, phase: (k & 1) * 0.28 + k * 0.1, colorFn: (a, i) => plume(a, k + 9, i, f) });
+  }
+
   const bodyG = part(body, paper, 'cloth');
   rig.add(bodyG);
 
   /* ---- head group (fox) */
   const NP = [0, 1.56, 0.0], HC = [0, 1.71, 0.012];
   const shift = [HC[0] - NP[0], HC[1] - NP[1], HC[2] - NP[2]];
-  const h = headDef({ rx: 0.082, ry: 0.088, rz: 0.1, brow: 0, cheek: 0, socket: 0, chin: 0, jaw: 0, eyeFx: 0.66, eyeFy: 0.1 });
+  const h = headDef({ rx: 0.082, ry: 0.088, rz: 0.1, brow: 0, cheek: 0, socket: 0, chin: 0, jaw: 0, eyeFx: 0.72, eyeFy: 0.15 });
   const HB = new Bucket(31), LB = new Bucket(32);
   HB.add(ICO1, IVORY, mat([0, 0, 0], [0.3, 0.2, 0], [0.083, 0.088, 0.1]), { flat: true, jitter: 0.03 });
   HB.add(ICO0, IVORY2, mat([0, -0.05, -0.02], [0, 0.3, 0], [0.07, 0.06, 0.07]), { flat: true });
@@ -1094,18 +1106,18 @@ function buildFold() {
     HB.add(earGeo(0.118, 0.29, 0.04), CHAR, em, { flat: true });
     HB.add(earGeo(0.07, 0.2, 0.025), (x, y) => (y > 0.14 ? IVORY2 : PEACH), new THREE.Matrix4().multiplyMatrices(em, mat([0, 0.012, 0.022], [0, 0, 0])), { flat: true });
     // facial markings: charcoal teardrop under each eye
-    feather(HB, mat([s * 0.06, 0.02, 0.075], [-0.3, 0, s * 0.55]), 0.03, 0.085, 0.012, CHAR, CHAR);
-    feather(HB, mat([s * 0.066, -0.005, 0.062], [-0.3, 0, s * 0.8]), 0.022, 0.06, 0.01, CHAR2, CHAR);
+    feather(HB, mat([s * 0.062, -0.026, 0.066], [-0.2, 0, s * 0.3]), 0.02, 0.05, 0.01, CHAR2, CHAR);
   }
   // crest between the ears + brow diamond
   for (let i = 0; i < 5; i++) { const f = i / 4 - 0.5; feather(HB, mat([f * 0.09, 0.07 - Math.abs(f) * 0.02, -0.03], [2.0 - Math.abs(f) * 0.3, 0, f * 0.9]), 0.05, 0.11 - Math.abs(f) * 0.03, 0.02, i % 2 ? IVORY : CHAR, i % 2 ? CHAR : IVORY); }
   feather(HB, mat([0, 0.074, 0.062], [-0.55, 0, 0]), 0.05, 0.08, 0.016, CHAR, CORAL);
-  const eye = eyePair(HB, LB, h, { r: 0.0245, sink: 0.3, tilt: 0.4, sx: 1.2, sy: 0.85, yaw: 0.12, sclera: 0xf6ead2, irisDark: 0xb83c18, iris: 0xff9440, iris2: 0xffd27a, pupilW: 0.2, pupilH: 0.5, irisW: 0.7, lid: IVORY2, lash: CHAR, lashes: 3, lashLen: 0.5, wing: 1.0, lidA: 0.95 });
+  const eye = eyePair(HB, LB, h, { r: 0.0275, sink: 0.3, tilt: 0.4, sx: 1.2, sy: 0.85, yaw: 0.12, sclera: 0xf6ead2, irisDark: 0xb83c18, iris: 0xff9440, iris2: 0xffd27a, pupilW: 0.2, pupilH: 0.5, irisW: 0.7, lid: IVORY2, lash: CHAR, lashes: 3, lashLen: 0.5, wing: 1.0, lidA: 0.95 });
   brows(HB, h, { col: CHAR, thick: 0.0075, sides: 3, inner: 0.22, outer: 0.78, dy: 0.2, arch: 0.02, slope: 0.1, off: 0.0015 });
   const headG = new THREE.Group();
   headG.position.set(NP[0], NP[1], NP[2]);
   const headM = HB.mesh(paper, 'cloth', shift);
   const lidG = new THREE.Group();
+  lidG.name = 'lids';
   lidG.position.set(shift[0], eye.ey + shift[1], eye.ez + shift[2]);
   const lidM = LB.mesh(paper, 'cloth');
   lidG.add(lidM);
@@ -1131,14 +1143,6 @@ function buildFold() {
   rig.add(halo);
 
   /* ---- skirt (shingled gown; rustles) */
-  const sk = new Bucket(51);
-  for (let k = 0; k < 22; k++) {
-    const f = k / 21;
-    featherRing(sk, { y: 1.03 - f * 0.83, rx: 0.11 + f * 0.17, rz: 0.09 + f * 0.16, n: 11 + Math.round(f * 9), h: 0.24 + f * 0.2, tilt: 0.1 + f * 0.24, phase: (k & 1) * 0.28 + k * 0.1, colorFn: (a, i) => plume(a, k + 9, i, f) });
-  }
-  const skirtG = part(sk, paper, 'cloth', [0, 1.0, 0]);
-  rig.add(skirtG);
-
   /* ---- arms (shared pivot at shoulder height): charcoal limb, feather sleeves, pauldron fans, paper hands */
   const ak = new Bucket(61);
   for (const s of [-1, 1]) {
@@ -1167,20 +1171,20 @@ function buildFold() {
 
   /* ---- tail fan: two layers of long creased blades with charcoal-dipped tips */
   const tb = new Bucket(71);
-  tb.xf = new THREE.Matrix4().makeTranslation(0.07, 0.96, -0.13);
+  tb.xf = new THREE.Matrix4().makeTranslation(0, 0.9, -0.16);
   const NB = 10;
   for (let L = 0; L < 2; L++) {
     const n = L === 0 ? NB : NB - 2;
     for (let i = 0; i < n; i++) {
       const f = i / (n - 1) - 0.5;
-      const hh = (L === 0 ? 1.15 : 0.85) - Math.abs(f) * 0.3;
-      const m = mat([0, 0, -L * 0.05], [0, 0.3, 1.95 + f * (L === 0 ? 1.3 : 1.05)]);
+      const hh = (L === 0 ? 0.6 : 0.45) - Math.abs(f) * 0.18;
+      const m = mat([0, 0, -L * 0.05], [-0.35, 0, Math.PI + f * (L === 0 ? 1.5 : 1.2)]);
       const alt = (i + L) % 3 === 1;
-      feather(tb, m, 0.3, hh, 0.07, alt ? CHAR2 : (L ? IVORY : IVORY2), alt ? IVORY : (i % 2 ? CHAR : CHAR2));
+      feather(tb, m, 0.2, hh, 0.06, alt ? CHAR2 : (L ? IVORY : IVORY2), alt ? IVORY : (i % 2 ? CHAR : CHAR2));
     }
   }
   tb.xf = null;
-  const tailG = part(tb, paper, 'cloth', [0.07, 0.96, -0.13]);
+  const tailG = part(tb, paper, 'cloth', [0, 0.9, -0.16]);
   rig.add(tailG);
 
   /* ---- cast props: paper cranes + hex shield (visible only while casting) */
@@ -1245,16 +1249,16 @@ function buildFold() {
     halo.scale.set(hs, hs, 1);
     halo.material.opacity = 0.7 + br * 0.1 + k * 0.3;
     starM.scale.setScalar(1 + br * 0.012 + k * 0.1);
-    skirtG.rotation.set(Math.sin(t * 1.0 + 2.3) * 0.016, Math.sin(t * 0.7) * 0.03, Math.sin(t * 1.3) * 0.02);
+    bodyG.rotation.set(0, Math.sin(t * 0.7) * 0.012, 0);
     armG.rotation.set(-k * 1.35 + Math.sin(t * 1.5) * 0.012, 0, 0);
     tailG.rotation.set(0, Math.sin(t * 0.8) * 0.06, Math.sin(t * 1.1) * 0.05 + k * 0.12);
     cranesM.visible = shieldM.visible = k > 0.005;
     if (k > 0.005) {
       cranesM.rotation.y = t * 2.2;
-      const sc = 0.3 + k * 0.9;
+      const sc = 0.3 + k * 0.6;
       cranesM.scale.set(sc, sc, sc);
-      shieldM.scale.setScalar(0.3 + k * 0.85);
-      shieldMat.opacity = 0.65 * k;
+      shieldM.scale.setScalar(0.25 + k * 0.5);
+      shieldMat.opacity = 0.4 * k;
     }
   }
   update(0, 0);
@@ -1292,17 +1296,17 @@ function starGeo(R, r, th) {
 }
 
 // finite-difference normals for a (cols+1)x(rows+1) grid, allocation free
-function gridNormals(pos, nrm, cols, rows) {
+function gridNormals(pos, nrm, cols, rows, vo = 0) {
   const W = cols + 1;
   for (let j = 0; j <= rows; j++) {
     for (let i = 0; i <= cols; i++) {
       const i0 = Math.max(0, i - 1), i1 = Math.min(cols, i + 1), j0 = Math.max(0, j - 1), j1 = Math.min(rows, j + 1);
-      const a = (j * W + i1) * 3, b = (j * W + i0) * 3, c = (j1 * W + i) * 3, d = (j0 * W + i) * 3;
+      const a = (vo + j * W + i1) * 3, b = (vo + j * W + i0) * 3, c = (vo + j1 * W + i) * 3, d = (vo + j0 * W + i) * 3;
       const ux = pos[a] - pos[b], uy = pos[a + 1] - pos[b + 1], uz = pos[a + 2] - pos[b + 2];
       const vx = pos[c] - pos[d], vy = pos[c + 1] - pos[d + 1], vz = pos[c + 2] - pos[d + 2];
       let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
       const l = Math.hypot(nx, ny, nz) || 1;
-      const o = (j * W + i) * 3;
+      const o = (vo + j * W + i) * 3;
       nrm[o] = nx / l; nrm[o + 1] = ny / l; nrm[o + 2] = nz / l;
     }
   }
@@ -1331,7 +1335,7 @@ function buildStarling() {
     const P = legP[s];
     const A = s < 0 ? PURPLE : ORANGE, B = s < 0 ? ORANGE : PURPLE;
     cb.xf = pelvisM;
-    cb.add(tubeGeo(P, legR, { sides: 16, sub: 6, ref: [0, 0, 1] }), (x, y, z, u, v) => (v < 0.2 ? A : harl(u, v, 4, 2.6, A, B, 0.5)), null);
+    cb.add(tubeGeo(P, legR, { sides: 14, sub: 6, ref: [0, 0, 1] }), (x, y, z, u, v) => (v < 0.2 ? A : harl(u, v, 7, 2.6, A, B, 0.5)), null);
     cb.xf = null;
     const ax = P[2][0], az = P[2][2];
     const yaw = s * 0.22;
@@ -1383,12 +1387,12 @@ function buildStarling() {
   brows(HB, h, { col: 0xb4561a, thick: 0.0048, inner: 0.18, outer: 0.72, dy: 0.21, arch: 0.06, slope: 0.03 });
   HB.add(tubeGeo([[0, -0.1, -0.008], [0, -0.13, -0.004], [0, -0.16, 0.0]], [0.034, 0.034, 0.05], { sides: 10, ref: [0, 0, 1] }), SKINS);
   const HR = new Bucket(213);
-  addHair(HR, h, { seed: 21, cols: [0xd9560f, 0xff7a1c, 0xffa83a, 0xffe08a], scalp: [0xff8a22, 0xe0660f], hairline: 0.92, spec: [[1.8, 10, 0.66, 0.8, 0.0], [1.48, 9, 0.58, 0.98, 0.5], [1.14, 5, 0.4, 0.75, 0.25]], r: 0.03, curl: 0.014, amp: 0.02, eb: 2.2, sideShort: 0.85, crown: 2, flow: 5, out: 0.03, waves: 0.8 });
+  addHair(HR, h, { seed: 21, cols: [0xd9560f, 0xff7a1c, 0xffa83a, 0xffe08a], scalp: [0xff8a22, 0xe0660f], hairline: 0.92, spec: [[1.8, 10, 0.66, 0.8, 0.0], [1.48, 9, 0.58, 0.98, 0.5], [1.14, 4, 0.4, 0.75, 0.25]], r: 0.03, curl: 0.014, amp: 0.02, eb: 2.2, sideShort: 0.85, crown: 2, flow: 4, out: 0.03, waves: 0.8 });
   // gold hat: cap + band + star + orbit rings, seated on the crown
   const HT = new Bucket(214);
-  const capG = new THREE.SphereGeometry(1, 14, 5, 0, Math.PI * 2, 0, 1.1);
-  HT.add(capG, (x, y, z) => (y > 0.1 ? GOLD2 : GOLD), mat([0, 0.058, -0.006], [0, 0, 0], [0.1, 0.078, 0.108]), { flat: true });
-  HT.add(new THREE.TorusGeometry(0.092, 0.0075, 5, 18), GOLD3, mat([0, 0.094, -0.006], [Math.PI / 2, 0, 0], [1.0, 1.1, 1.0]));
+  const capG = new THREE.SphereGeometry(1, 14, 5, 0, Math.PI * 2, 0, 1.3);
+  HT.add(capG, (x, y, z) => (y > 0.1 ? GOLD2 : GOLD), mat([0, 0.038, -0.006], [0, 0, 0], [0.098, 0.088, 0.104]), { flat: true });
+  HT.add(new THREE.TorusGeometry(0.093, 0.0075, 5, 18), GOLD3, mat([0, 0.0655, -0.006], [Math.PI / 2, 0, 0], [1.0, 1.1, 1.0]));
   const SC = [0.01, 0.33, -0.03], SR = 0.26;
   const starM = mat(SC, [-0.32, 0, 0.26]);
   HT.add(starGeo(SR, SR * 0.46, 0.05), (x, y, z) => (z > 0 ? GOLD2 : GOLD3), starM, { flat: true });
@@ -1405,13 +1409,14 @@ function buildStarling() {
   const hairM = HR.mesh(Mc, 'cloth', shift);
   const hatM = HT.mesh(Mg, 'brass', shift);
   const lidG = new THREE.Group();
+  lidG.name = 'lids';
   lidG.position.set(shift[0], eye.ey + shift[1], eye.ez + shift[2]);
   const lidM = LB.mesh(Ms, 'skin');
   lidG.add(lidM);
   headG.add(headM, hairM, hatM, lidG);
   rig.add(headG);
   // planets (instanced, banded)
-  const pg = new THREE.SphereGeometry(1, 12, 8);
+  const pg = new THREE.SphereGeometry(1, 10, 6);
   {
     const pp = pg.attributes.position, cols = new Float32Array(pp.count * 3);
     for (let i = 0; i < pp.count; i++) {
@@ -1462,12 +1467,11 @@ function buildStarling() {
   armG.add(ak.mesh(Mc, 'cloth'));
   rig.add(armG);
 
-  /* cape-skirt panels (dynamic) */
-  const COLS = 14, ROWS = 10;
-  const capes = [];
-  for (const s of [-1, 1]) {
-    const NV = (COLS + 1) * (ROWS + 1);
-    const pos = new Float32Array(NV * 3), nrm = new Float32Array(NV * 3), col = new Float32Array(NV * 3), idx = [];
+  /* cape-skirt panels (dynamic; one mesh, two grids) */
+  const COLS = 14, ROWS = 10, NV = (COLS + 1) * (ROWS + 1);
+  const cpos = new Float32Array(NV * 6), cnrm = new Float32Array(NV * 6), ccol = new Float32Array(NV * 6), cidx = [];
+  [-1, 1].forEach((s, pi) => {
+    const vo = pi * NV;
     for (let j = 0; j <= ROWS; j++) {
       const v = j / ROWS;
       for (let i = 0; i <= COLS; i++) {
@@ -1476,32 +1480,32 @@ function buildStarling() {
         const sp = Math.sin(phi);
         const r = 0.11 + v * (0.18 + 0.34 * Math.pow(sp, 1.3));
         const zig = j === ROWS ? 0.07 * tri(u * 7) : (j === ROWS - 1 ? 0.02 * tri(u * 7) : 0);
-        const o = (j * (COLS + 1) + i) * 3;
-        pos[o] = s * sp * r;
-        pos[o + 1] = 1.04 - v * 0.72 - 0.1 * v * (1 - sp) + zig * 0.0 - zig;
-        pos[o + 2] = Math.cos(phi) * r * 0.85;
+        const o = (vo + j * (COLS + 1) + i) * 3;
+        cpos[o] = s * sp * r;
+        cpos[o + 1] = 1.04 - v * 0.72 - 0.1 * v * (1 - sp) - zig;
+        cpos[o + 2] = Math.cos(phi) * r * 0.85;
         const band = v > 0.82 + 0.1 * tri(u * 7) ? 1 : 0;
         const c = _c.set(band ? ORANGE : PURPLE).lerp(_cB.set(PURPLE2), (1 - band) * v * 0.7);
         if (band && j < ROWS) c.lerp(_cB.set(ORANGE2), 0.2);
-        col[o] = c.r; col[o + 1] = c.g; col[o + 2] = c.b;
+        ccol[o] = c.r; ccol[o + 1] = c.g; ccol[o + 2] = c.b;
       }
     }
     for (let j = 0; j < ROWS; j++) for (let i = 0; i < COLS; i++) {
-      const a = j * (COLS + 1) + i, b = a + 1, c = a + COLS + 1, d = c + 1;
-      if (s > 0) idx.push(a, c, b, b, c, d); else idx.push(a, b, c, b, d, c);
+      const a = vo + j * (COLS + 1) + i, b = a + 1, c = a + COLS + 1, d = c + 1;
+      if (s > 0) cidx.push(a, c, b, b, c, d); else cidx.push(a, b, c, b, d, c);
     }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.setIndex(idx);
-    gridNormals(pos, nrm, COLS, ROWS);
-    const me = new THREE.Mesh(g, capeMat);
-    me.frustumCulled = false;
-    me.userData.mat = 'cloth';
-    capes.push({ me, base: pos.slice(), pos, nrm, s });
-    rig.add(me);
-  }
+  });
+  const capeBase = cpos.slice();
+  const capeGeo = new THREE.BufferGeometry();
+  capeGeo.setAttribute('position', new THREE.BufferAttribute(cpos, 3));
+  capeGeo.setAttribute('normal', new THREE.BufferAttribute(cnrm, 3));
+  capeGeo.setAttribute('color', new THREE.BufferAttribute(ccol, 3));
+  capeGeo.setIndex(cidx);
+  gridNormals(cpos, cnrm, COLS, ROWS, 0); gridNormals(cpos, cnrm, COLS, ROWS, NV);
+  const capeMesh = new THREE.Mesh(capeGeo, capeMat);
+  capeMesh.frustumCulled = false;
+  capeMesh.userData.mat = 'cloth';
+  rig.add(capeMesh);
 
   /* starburst (cast) */
   const bbk = new Bucket(251);
@@ -1545,20 +1549,20 @@ function buildStarling() {
     planets.instanceMatrix.needsUpdate = true;
     Mg.emissiveIntensity = 0.7 + k * 1.2;
     for (let c = 0; c < 2; c++) {
-      const { me, base, pos, nrm, s } = capes[c];
+      const s = c ? 1 : -1, vo = c * NV;
       for (let j = 0; j <= ROWS; j++) {
-        const v = j / ROWS, w = v * v;
+        const vv = j / ROWS, w = vv * vv;
         for (let i = 0; i <= COLS; i++) {
-          const o = (j * (COLS + 1) + i) * 3;
-          pos[o] = base[o] + s * (Math.sin(t * 1.5 + v * 3 + c + i * 0.35) * 0.028 + k * 0.05 * v) * w;
-          pos[o + 1] = base[o + 1] - k * 0.02 * v;
-          pos[o + 2] = base[o + 2] + Math.sin(t * 1.9 + v * 4 + i * 0.5) * 0.024 * w;
+          const o = (vo + j * (COLS + 1) + i) * 3;
+          cpos[o] = capeBase[o] + s * (Math.sin(t * 1.5 + vv * 3 + c + i * 0.35) * 0.028 + k * 0.05 * vv) * w;
+          cpos[o + 1] = capeBase[o + 1] - k * 0.02 * vv;
+          cpos[o + 2] = capeBase[o + 2] + Math.sin(t * 1.9 + vv * 4 + i * 0.5) * 0.024 * w;
         }
       }
-      gridNormals(pos, nrm, COLS, ROWS);
-      me.geometry.attributes.position.needsUpdate = true;
-      me.geometry.attributes.normal.needsUpdate = true;
+      gridNormals(cpos, cnrm, COLS, ROWS, vo);
     }
+    capeGeo.attributes.position.needsUpdate = true;
+    capeGeo.attributes.normal.needsUpdate = true;
     burstG.visible = k > 0.005;
     if (k > 0.005) {
       const sc = 0.15 + k * 0.6;

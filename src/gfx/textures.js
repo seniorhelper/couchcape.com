@@ -104,7 +104,7 @@ const GEN = {};
 GEN.rock = (S, variant, seed) => {
   const N = S * S, alb = new Float32Array(N * 3), h = new Float32Array(N), rough = new Float32Array(N);
   const base = fbm(S, 4, 6, seed), crag = fbm(S, 6, 5, seed + 7, { ridged: true }), fine = fbm(S, 64, 2, seed + 21);
-  const lich = fbm(S, 8, 4, seed + 33), w = worley(S, variant === 'asteroid' ? 12 : 7, seed + 13);
+  const lich = fbm(S, 8, 4, seed + 33), w = worley(S, variant === 'asteroid' ? 12 : variant === 'strata' ? 13 : 7, seed + 13);
   const strata = variant === 'strata', ast = variant === 'asteroid', lichAmt = variant === 'lichen' ? 1 : ast ? 0 : 0.45;
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
     const i = y * S + x, b = base[i], c = crag[i], f = fine[i];
@@ -115,7 +115,7 @@ GEN.rock = (S, variant, seed) => {
       const sv = y / S * 6 + (b - 0.5) * 1.6 + (samp(crag, S, x * 0.5, y) - 0.5) * 0.25;
       const fr = sv - Math.floor(sv); band = Math.floor(sv);
       const ledge = smooth(0.0, 0.08, fr) * (1 - smooth(0.82, 1.0, fr) * 0.6);
-      hh = 0.35 * b + 0.25 * c + 0.35 * ledge - 0.3 * crack + 0.07 * f;
+      hh = 0.35 * b + 0.25 * c + 0.35 * ledge - 0.1 * crack * smooth(0.45, 0.7, b) + 0.07 * f;
     } else if (ast) {
       const bowl = smooth(0.42, 0.0, w.f1[i]) * (w.id[i] > 0.55 ? 1 : 0);
       const rim = Math.exp(-(((w.f1[i] - 0.42) / 0.08) ** 2)) * (w.id[i] > 0.55 ? 1 : 0);
@@ -127,7 +127,7 @@ GEN.rock = (S, variant, seed) => {
     const lift = 0.85 + 0.3 * c; r *= lift; g *= lift; bl *= lift;
     if (strata) { const t = ((band * 0.618) % 1 + 1) % 1; r *= 0.9 + 0.22 * t; g *= 0.9 + 0.15 * t; bl *= 0.92 + 0.06 * t; }
     if (ast) { r = mix(0.27, 0.42, b) * (0.85 + 0.3 * c); g = r * 0.96; bl = r * 0.92; }
-    const cav = 1 - crack * 0.55; r *= cav; g *= cav; bl *= cav;
+    const cav = 1 - crack * (strata ? 0.18 * smooth(0.45, 0.7, b) : 0.55); r *= cav; g *= cav; bl *= cav;
     const sp = 0.92 + 0.16 * f; r *= sp; g *= sp; bl *= sp;
     // lichen grows on exposed crests
     const m = smooth(0.56, 0.68, lich[i]) * smooth(0.35, 0.6, hh) * lichAmt;
@@ -143,7 +143,7 @@ GEN.stone = (S, variant, seed) => { // polished limestone (default) | 'granite' 
   const m1 = fbm(S, 4, 5, seed), m2 = fbm(S, 32, 3, seed + 5), w = worley(S, variant === 'granite' ? 96 : 48, seed + 9);
   for (let i = 0; i < N; i++) {
     let r, g, b, hh = 0.3 * m1[i] + 0.1 * m2[i], ro;
-    const pit = smooth(0.18, 0.0, w.f1[i]) * (w.id[i] > 0.8 ? 1 : 0);
+    const pit = variant === 'polished' ? 0 : smooth(0.18, 0.0, w.f1[i]) * (w.id[i] > 0.8 ? 1 : 0);
     if (variant === 'granite') {
       const sp = w.id[i]; const k = sp < 0.3 ? 0.35 : sp < 0.75 ? 0.75 : 0.95;
       r = k * (0.95 + 0.1 * m1[i]); g = k * 0.97; b = k * 0.98; ro = 0.28 + 0.1 * m2[i];

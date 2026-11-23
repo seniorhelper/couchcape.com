@@ -14,7 +14,7 @@ export class Flight {
     this.cruise = false; // accessibility: toggle steady flight without holding a pose
     this.yawBias = 0;    // recenter: your chair's 'forward' (fixes non-swivel chairs that face off-origin)
     this.vignette = this.makeVignette(); camera.add(this.vignette);
-    this.bounds = 400;
+    this.bounds = 400; this.cx = 0; this.cz = 0;   // bounds circle center (moves with the active world)
   }
   makeVignette() {
     const mat = new THREE.ShaderMaterial({
@@ -49,7 +49,7 @@ export class Flight {
     // soft world bounds + ground clearance
     const p = this.rig.position;
     p.y = THREE.MathUtils.clamp(p.y, 2, 160);
-    const r = Math.hypot(p.x, p.z); if (r > this.bounds) { p.x *= this.bounds / r; p.z *= this.bounds / r; }
+    const dx = p.x - this.cx, dz = p.z - this.cz, r = Math.hypot(dx, dz); if (r > this.bounds) { p.x = this.cx + dx * this.bounds / r; p.z = this.cz + dz * this.bounds / r; }
 
     // vignette from speed + turning, scaled by comfort setting
     const motion = Math.min(1, this.speed / c.maxSpeed * 0.6 + Math.abs(this.turnVel) * 0.9);

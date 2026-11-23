@@ -83,7 +83,7 @@ async function boot() {
   ]);
   LEVELS = levels; BoardMod = boardMod;
   miniBoss = new MiniBoss(scene, heart, raids, getFoeArt() && getFoeArt().buildEcho);
-  if (gfxMod && gfxMod.initGfx) { try { gfx = gfxMod; await gfx.initGfx({ scene, renderer, camera, hemi, sun }); } catch (e) { console.warn('gfx init failed', e); gfx = null; } }
+  if (gfxMod && gfxMod.initGfx) { try { gfx = gfxMod; gfx.initGfx({ scene, renderer, camera, preset: 'aurelia-day', quality: settings.perf ? 'low' : 'high' }); } catch (e) { console.warn('gfx init failed', e); gfx = null; } }
   if (cityMod && cityMod.buildCity) city = cityMod.buildCity(scene);
   else { const { buildWorld } = await import('./world.js'); buildWorld(scene); city = fallbackCity(); }
   if (gfx && gfx.upgradeCity && city.root) { try { gfx.upgradeCity(city.root); } catch (e) { console.warn('upgradeCity failed', e); } }
@@ -105,7 +105,7 @@ async function boot() {
   });
   refreshDestinations();
   lineup = new Lineup(scene, new THREE.Vector3(spawn.x, spawn.y - 1.2, spawn.z - 6.5), spawn);
-  if (gfx && gfx.addContactShadow) lineup.items.forEach(it => { try { gfx.addContactShadow(it.hero.group, 0.55); if (gfx.rimify) gfx.rimify(it.hero.group); } catch (e) {} });
+  if (gfx && gfx.setupHeroStage) { try { gfx.setupHeroStage(lineup, { cityRoot: city.root }); renderer.compile(scene, camera); gfx.setHeroStageVisible(false); renderer.compile(scene, camera); gfx.setHeroStageVisible(true); } catch (e) { console.warn('hero stage failed', e); } }
   rig.position.copy(spawn); beacon.copy(spawn);
   if (qTier) applyQuality();
   setActiveWorld('aurelia');
@@ -133,6 +133,7 @@ function ensureLevel(id) {
 }
 function setActiveWorld(id) {
   activeWorld = id;
+  { const d = DEST['world:' + id]; flight.cx = d && d.offset ? d.offset.x : 0; flight.cz = d && d.offset ? d.offset.z : 0; flight.bounds = id === 'aurelia' ? 420 : 480; }
   if (city && city.root) city.root.visible = id === 'aurelia';
   for (const k in levelBuilt) if (levelBuilt[k].root) levelBuilt[k].root.visible = k === id;
   if (gfx && gfx.setPreset) {
@@ -354,7 +355,7 @@ net.avatar = id => buildHero(HERO_ORDER.includes(id) ? id : 'ribbon');
 // ---------- auto quality guard ----------
 let qTier = settings.perfMode ? 1 : 0, qAcc = 0, qN = 0, qCool = 6;
 function thin(root) { const keep = [1, 0.6, 0.35][qTier]; root.traverse(o => { if (o.isInstancedMesh) { if (o.userData.fullCount === undefined) o.userData.fullCount = o.count; o.count = Math.max(1, Math.floor(o.userData.fullCount * keep)); } }); }
-function applyQuality() { if (city && city.root) thin(city.root); for (const k in levelBuilt) if (levelBuilt[k].root) thin(levelBuilt[k].root); if (gfx && gfx.setQuality) try { gfx.setQuality(qTier); } catch (e) {} }
+function applyQuality() { if (city && city.root) thin(city.root); for (const k in levelBuilt) if (levelBuilt[k].root) thin(levelBuilt[k].root); if (gfx && gfx.setShadowQuality) try { gfx.setShadowQuality(qTier >= 1 ? 'off' : 'auto'); } catch (e) {} }
 function qualityGuard(dt) {
   if (!renderer.xr.isPresenting || qTier >= 2) return;
   qAcc += dt; qN++; qCool -= dt;
@@ -367,7 +368,7 @@ const gazeList = [], powerList = [];
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05); time += dt;
   if (city && activeWorld === 'aurelia') city.update(dt, time);
-  if (lineup) { lineup.group.visible = (state === 'select' || state === 'title' || state === 'boot') && activeWorld === 'aurelia'; if (lineup.group.visible) lineup.update(dt, time); }
+  if (lineup) { lineup.group.visible = (state === 'select' || state === 'title' || state === 'boot') && activeWorld === 'aurelia'; if (lineup.group.visible) lineup.update(dt, time); if (gfx && gfx.setHeroStageVisible) gfx.setHeroStageVisible(lineup.group.visible); }
   qualityGuard(dt);
   if (state !== 'title' && state !== 'boot') { const th = musicTheme(); if (th !== musicLast.t) { musicLast.t = th; music.setTheme(th); } const mi = boss.active || (miniBoss && miniBoss.active) ? 1 : raids.alive > 0 ? 0.75 : 0.15; if (mi !== musicLast.i) { musicLast.i = mi; music.setIntensity(mi); } music.update(dt); }
   if (state !== 'title' && state !== 'boot') { restT += dt; if (restT > 1800) { restT = 0; say('You\'ve been playing for 30 minutes. Great time to stretch, blink and grab some water — your progress is saved.', 'Odessa', 8); } }

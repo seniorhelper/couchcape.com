@@ -63,6 +63,7 @@ export function materialFor(tag, mesh) {
   const m = new THREE.MeshStandardMaterial({ color, vertexColors: vc, roughness: r.rough, metalness: r.metal, side: src.side, flatShading: !!src.flatShading, envMapIntensity: r.env });
   m.name = `gfx-${tag}${ud.matVariant ? '-' + ud.matVariant : ''}`; m.userData.envBase = r.env;
   if (set && set.kind === 'mirror' && tag !== 'glass' && tag !== 'water') m.metalness = 1;
+  const gain = set ? Math.min(6, 1 / Math.max(0.03, set.mean)) : 1; // detail albedo normalised to ~1 on average
   const glow = r.glow ?? 0;
   if (glow) { m.emissive.setHex(em || color); m.emissiveIntensity = glow; } else if (em) { m.emissive.setHex(em); m.emissiveIntensity = src.emissiveIntensity ?? 1; }
   const op = r.opacity ?? (src.transparent ? src.opacity : 1);
@@ -71,7 +72,8 @@ export function materialFor(tag, mesh) {
     if (uv) {
       m.map = uvClone(set.map, rep); m.normalMap = uvClone(set.normalMap, rep); m.roughnessMap = uvClone(set.roughnessMap, rep);
       if (tag === 'water') m.normalMap = set.normalMap.clone(); m.normalScale.set(r.ns, r.ns); if (r.albAmt !== undefined && r.albAmt < 0.5) m.map = null;
-    } else triplanar(m, set, { scale, space, normalStr: r.ns, albAmt: r.albAmt ?? 1, albGain: 1 });
+      if (m.map && set.kind !== 'checker') m.color.multiplyScalar(gain); // keep the art-directed average colour
+    } else triplanar(m, set, { scale, space, normalStr: r.ns, albAmt: r.albAmt ?? 0.85, albGain: set.kind === 'checker' ? 1 : gain });
   }
   if (tag === 'water') m.userData.scroll = true;
   MATS.set(key, m); managed.add(m);
@@ -100,7 +102,7 @@ export function updateMaterials(dt, t) { // water drift: UV water scrolls its ow
 // material.userData.gfx tag -> [texture kind, variant, triplanar opts, material changes]
 const CITY = {
   stone:  ['stone', 'default', { scale: 0.33, albAmt: 0.5, normalStr: 0.8 }, { roughness: 0.85 }],
-  plaza:  ['stone', 'default', { scale: 0.25, albAmt: 0.35, normalStr: 0.25 }, { roughness: 0.35 }],
+  plaza:  ['stone', 'polished', { scale: 0.25, albAmt: 0.35, normalStr: 0.25 }, { roughness: 0.35 }],
   bronze: ['brass', 'default', { scale: 0.5, albAmt: 0.55, normalStr: 0.9 }, { roughness: 1.0, metalness: 0.75 }],
   fol:    ['foliage', 'default', { scale: 0.7, albAmt: 0.55, normalStr: 0.9 }, { roughness: 1.4 }],
   tree:   ['foliage', 'default', { scale: 0.9, albAmt: 0.3, normalStr: 0.8 }, { roughness: 1.4 }],
