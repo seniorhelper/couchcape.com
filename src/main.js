@@ -17,7 +17,7 @@ import { Wayfinder } from './travel.js';
 import { Lineup, loadHeroes, buildHero, heroName, HERO_ORDER } from './select.js';
 import { DISTRICTS, LINES, say, setVoice, Glimmerlings, ChoicePanel } from './story.js';
 import { Menus } from './menu.js';
-import { loadLevels, WorldRun, MiniBoss, LEVEL_IDS, loadMiniBossArt } from './worlds.js';
+import { loadLevels, WorldRun, MiniBoss, LEVEL_IDS, loadMiniBossArt, makeBeacon } from './worlds.js';
 
 // ---------- renderer (Quest-tuned) ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -32,7 +32,7 @@ renderer.xr.setFoveation(1);
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 2400);
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 4200);
 const rig = new THREE.Group(); scene.add(rig);
 const seat = new THREE.Group(); rig.add(seat); seat.add(camera); // seat = adjustable eye height (Settings → Seat height)
 seat.position.y = settings.heightOffset || 0;
@@ -104,6 +104,7 @@ async function boot() {
     DEST['world:' + id] = { id: 'world:' + id, name: L.name, sub: L.sub || 'Seam world', color: L.color || '#7cf4ff', world: id, offset: new THREE.Vector3(3000 * (i + 1), 0, 0), pos: null, look: null };
   });
   refreshDestinations();
+  try { addSeamGates(); addSkyIsles(); } catch (e) { console.warn('gates/isles failed', e); }
   lineup = new Lineup(scene, new THREE.Vector3(spawn.x, spawn.y - 1.2, spawn.z - 6.5), spawn);
   if (gfx && gfx.setupHeroStage) { try { gfx.setupHeroStage(lineup, { cityRoot: city.root }); renderer.compile(scene, camera); gfx.setHeroStageVisible(false); renderer.compile(scene, camera); gfx.setHeroStageVisible(true); } catch (e) { console.warn('hero stage failed', e); } }
   rig.position.copy(spawn); beacon.copy(spawn);
@@ -133,7 +134,7 @@ function ensureLevel(id) {
 }
 function setActiveWorld(id) {
   activeWorld = id;
-  { const d = DEST['world:' + id]; flight.cx = d && d.offset ? d.offset.x : 0; flight.cz = d && d.offset ? d.offset.z : 0; flight.bounds = id === 'aurelia' ? 420 : 480; flight.minY = id === 'paradox' ? -30 : 2; }
+  { const d = DEST['world:' + id]; flight.cx = d && d.offset ? d.offset.x : 0; flight.cz = d && d.offset ? d.offset.z : 0; flight.bounds = id === 'aurelia' ? 1500 : 650; flight.minY = id === 'paradox' ? -30 : 2; flight.maxY = id === 'aurelia' ? 620 : 320; }
   if (city && city.root) city.root.visible = id === 'aurelia';
   for (const k in levelBuilt) if (levelBuilt[k].root) levelBuilt[k].root.visible = k === id;
   if (gfx && gfx.setPreset) {
@@ -155,6 +156,7 @@ function refreshDestinations() {
   const acts = [
     { action: 'page', label: page === 'aurelia' ? 'Other Worlds' : 'Aurelia', color: '#9b7bff' },
     { action: 'board', label: 'Board Game', color: '#ffd84d' },
+    { action: 'signs', label: 'Hand Signs', color: '#ffb347' },
     { action: 'settings', label: 'Settings', color: '#7cf4ff' },
     { action: 'players', label: 'Players', color: '#ff7fb8' },
     { action: 'pause', label: 'Pause', color: '#8cff6a' }
@@ -178,6 +180,7 @@ function activate(fromHand) {
   if (h && h.userData.choice !== undefined) { const cb = choice.cb; choice.hide(); if (cb) { cb(h.userData.choice); return; } boss.reflectionChosen(h.userData.choice === 'humble'); if (h.userData.choice === 'humble') kind.push('Told the truth to your own reflection'); else say('That\'s the glass talking. Look again — honestly.'); return; }
   if (h && h.userData.heroId && state === 'select') { pickHero(h.userData.heroId); return; }
   if (h && h.userData.glimmer) { if (glims.rescue(h)) heart.addShard(); return; }
+  if (h && h.userData.portal) { SFX.select(); hop(DEST['world:' + h.userData.portal]); return; }
   if (h && h.userData.beacon && run) { run.useBeacon(); return; }
   if (h && h.userData.plaque) { say(`${h.userData.plaqueTitle ? h.userData.plaqueTitle + ': ' : ''}${h.userData.plaque}`, 'How your brain got tricked', 9); h.userData.dwellTime = 99; setTimeout(() => { h.userData.dwellTime = 1.6; }, 12000); return; }
   if (h && h.userData.piece && run) { const m = run.pieces.find(p => p === h); if (m) run.collectPiece(m); return; }
@@ -185,28 +188,32 @@ function activate(fromHand) {
   if (state !== 'play') return;
   if (fromHand !== undefined && hands.hands[fromHand].joints['index-finger-tip']) hands.hands[fromHand].joints['index-finger-tip'].getWorldPosition(_o);
   else { camera.getWorldPosition(_o); _o.y -= 0.15; }
-  gaze.dir(_d); powers.cast(_o, _d);
+  gaze.dir(_d); powers.cast(_o, _d); if (avatar.hero && avatar.hero.cast) avatar.hero.cast();
 }
 function doAction(a) {
   SFX.select();
   if (a === 'page') { page = page === 'aurelia' ? 'seams' : 'aurelia'; refreshDestinations(); way.show(); return; }
   way.hide();
-  if (a === 'settings') menus.open('settings');
+  if (a === 'signs') menus.open('signs');
+  else if (a === 'settings') menus.open('settings');
   else if (a === 'players') menus.open('players');
   else if (a === 'pause') menus.open('pause');
   else if (a === 'board') startBoard();
 }
 bus.on('pinch', ({ i }) => { if (!way.open || gaze.hit) activate(i); });
 bus.on('select', () => activate());
+bus.on('pinchMid', () => { if (state === 'play' || state === 'board' || state === 'won') way.toggle(); });
+bus.on('pinchRing', () => { if (state === 'play' || state === 'won') cycleView(); });
 bus.on('palmLook', () => { if (state === 'play' || state === 'board' || state === 'won') way.toggle(); });
 
 function pickHero(id) {
-  heroId = id; powers.setHero(id); lineup.choose(id); SFX.container();
+  heroId = id; powers.setHero(id); lineup.choose(id); SFX.container(); setAvatar(id);
   const glove = POWERS[id].color;
   hands.mesh.material.color.setHex(glove); hands.mesh.material.emissive.setHex(glove);
   say(LINES.picked(heroName(id)));
   state = 'play'; net.out.h = id;
   setTimeout(() => say(LINES.wayfinder), 6500);
+  setTimeout(() => bus.emit('toast', 'Hands can rest: squeeze a fist to fly. Thumb + middle finger opens the map.'), 11000);
   if (Object.keys(LEVELS).length) setTimeout(() => say(LINES.seams), 16000);
   refreshDestinations();
 }
@@ -298,6 +305,60 @@ bus.on('recenter', () => { _e.setFromQuaternion(camera.quaternion, 'YXZ'); fligh
 bus.on('exitGame', () => { menus.close(); const s = renderer.xr.getSession(); if (s) s.end(); else { $('intro').hidden = false; state = 'title'; } });
 const _e = new THREE.Euler();
 
+// ---------- your hero's body + camera views (chase / over-the-shoulder / first-person) ----------
+const VIEWS = ['chase', 'shoulder', 'first'], VIEW_NAMES = { chase: 'Chase view', shoulder: 'Over the shoulder', first: 'First person' };
+const avatar = { holder: new THREE.Group(), tilt: new THREE.Group(), hero: null, view: VIEWS.includes(settings.view) ? settings.view : 'chase', snap: true };
+avatar.holder.add(avatar.tilt); avatar.holder.visible = false; rig.add(avatar.holder);
+const _av = new THREE.Vector3();
+function setAvatar(id) { if (avatar.hero) avatar.tilt.remove(avatar.hero.group); avatar.hero = buildHero(id); avatar.hero.group.position.set(0, -0.95, 0); avatar.tilt.add(avatar.hero.group); avatar.snap = true; }
+function cycleView() { avatar.view = VIEWS[(VIEWS.indexOf(avatar.view) + 1) % VIEWS.length]; settings.view = avatar.view; saveSettings(); avatar.snap = true; SFX.select(); bus.emit('toast', VIEW_NAMES[avatar.view]); }
+function updateAvatar(dt, t) {
+  const show = !!avatar.hero && avatar.view !== 'first' && (state === 'play' || state === 'won') && !way.open && !menus.group.visible;
+  avatar.holder.visible = show; if (!show) { avatar.snap = true; return; }
+  const sh = avatar.view === 'shoulder', dist = sh ? 2.1 : 4.2, drop = sh ? 0.7 : 1.25, side = sh ? 0.75 : 0;
+  const b = flight.yawBias, fx = -Math.sin(b), fz = -Math.cos(b);
+  _av.copy(camera.position).add(seat.position);
+  _av.x += fx * dist - fz * side; _av.z += fz * dist + fx * side; _av.y -= drop;
+  if (avatar.snap) { avatar.holder.position.copy(_av); avatar.snap = false; } else avatar.holder.position.lerp(_av, Math.min(1, dt * 5));
+  avatar.holder.rotation.y = b + Math.PI;
+  const k = Math.min(1, flight.speed / 12), e = Math.min(1, dt * 4);
+  avatar.tilt.rotation.x += (k * 1.2 - avatar.tilt.rotation.x) * e;                 // lean into a flying pose with speed
+  avatar.tilt.rotation.z += (THREE.MathUtils.clamp(-flight.turnVel * 0.6, -0.5, 0.5) - avatar.tilt.rotation.z) * e; // bank into turns
+  avatar.tilt.position.y = Math.sin(t * 1.3) * 0.06;
+  avatar.hero.update(dt, t);
+}
+
+// ---------- Seam Gates over the plaza (visible doors to the other worlds) + far Sky Isles (a much bigger sky) ----------
+const portals = [];
+function addSeamGates() {
+  const ids = LEVEL_IDS.filter(id => DEST['world:' + id]);
+  ids.forEach((id, i) => {
+    const d = DEST['world:' + id], g = makeBeacon(new THREE.Color(d.color || '#7cf4ff').getHex());
+    const a = (i - (ids.length - 1) / 2) * 0.42;
+    g.position.set(city.spawn.x + Math.sin(a) * 30, city.spawn.y + 9, city.spawn.z - Math.cos(a) * 30); g.scale.setScalar(2.2);
+    g.lookAt(city.spawn.x, city.spawn.y + 2, city.spawn.z);
+    g.userData = { gazeable: true, dwell: true, dwellTime: 1.6, portal: id };
+    const c = document.createElement('canvas'); c.width = 512; c.height = 128; const x = c.getContext('2d');
+    x.fillStyle = 'rgba(255,255,255,0.94)'; x.fillRect(0, 0, 512, 128); x.strokeStyle = d.color || '#7cf4ff'; x.lineWidth = 12; x.strokeRect(6, 6, 500, 116);
+    x.fillStyle = '#10213a'; x.font = '700 54px Inter, system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(d.name || id, 256, 84);
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+    const lab = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: tx, fog: false, toneMapped: false, side: THREE.DoubleSide })); lab.position.y = -2.2; g.add(lab);
+    city.root.add(g); portals.push(g);
+  });
+}
+function addSkyIsles() {
+  const N = 70, rock = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1.5, 7).rotateX(Math.PI).translate(0, -0.75, 0), new THREE.MeshStandardMaterial({ color: 0x8e7ab0, roughness: 0.95, flatShading: true }), N);
+  const top = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 0.1, 7).translate(0, 0.05, 0), new THREE.MeshStandardMaterial({ color: 0x79c96a, roughness: 0.9, flatShading: true }), N);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), sc = new THREE.Vector3(); let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < N; i++) {
+    const a = rnd() * Math.PI * 2, r = 520 + rnd() * 1150, s = 24 + rnd() * rnd() * 110;
+    p.set(Math.cos(a) * r, -20 + rnd() * 520, Math.sin(a) * r); q.setFromEuler(e.set(0, rnd() * 6.28, 0)); sc.set(s, s * (0.7 + rnd() * 0.9), s);
+    rock.setMatrixAt(i, m.compose(p, q, sc)); top.setMatrixAt(i, m.compose(p, q, sc.set(s, s * 0.6, s)));
+  }
+  rock.frustumCulled = top.frustumCulled = false; city.root.add(rock, top);
+}
+
 // ---------- desktop testing controls ----------
 const keys = {}; let yaw = 0, pitch = 0;
 addEventListener('keydown', e => {
@@ -307,6 +368,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Space') activate();
   if (e.code === 'KeyR') { if (state === 'board') { if (board && board.rollKey) board.rollKey(); } else bus.emit('recenter'); }
   if (e.code === 'KeyC') flight.cruise = !flight.cruise;
+  if (e.code === 'KeyV') cycleView();
   if (e.code === 'KeyB') startBoard();
   if (e.code === 'Escape') menus.open('pause');
   if (/^Digit[1-7]$/.test(e.code) && state === 'select') pickHero(HERO_ORDER[+e.code.slice(5) - 1]);
@@ -373,6 +435,7 @@ renderer.setAnimationLoop(() => {
   if (state !== 'title' && state !== 'boot') { const th = musicTheme(); if (th !== musicLast.t) { musicLast.t = th; music.setTheme(th); } const mi = boss.active || (miniBoss && miniBoss.active) ? 1 : raids.alive > 0 ? 0.75 : 0.15; if (mi !== musicLast.i) { musicLast.i = mi; music.setIntensity(mi); } music.update(dt); }
   if (state !== 'title' && state !== 'boot') { restT += dt; if (restT > 1800) { restT = 0; say('You\'ve been playing for 30 minutes. Great time to stretch, blink and grab some water — your progress is saved.', 'Odessa', 8); } }
   if (gfx && gfx.update) gfx.update(dt, time, camera);
+  if (activeWorld === 'aurelia') for (const g of portals) g.update(time);
   if (state === 'boot' || state === 'title') { renderer.render(scene, camera); return; }
   if (!paused && !menus.group.visible) {
     _lf.set(0, 0, -1).applyQuaternion(camera.quaternion);
@@ -380,7 +443,9 @@ renderer.setAnimationLoop(() => {
     const flying = (state === 'play' || state === 'won') && !way.open;
     flight.input = flying ? Math.max(hands.thrust(), keys.KeyW ? 1 : 0) : 0;
     if (keys.KeyS) flight.input = 0;
+    flight.boost = flying && (hands.boost() || !!keys.ShiftLeft);
     flight.update(dt);
+    updateAvatar(dt, time);
     camera.getWorldPosition(_hp); camera.getWorldQuaternion(_hq); camera.getWorldDirection(_d);
     powerList.length = 0;
     for (const t of raids.list) powerList.push(t);
@@ -408,7 +473,7 @@ renderer.setAnimationLoop(() => {
     if (way.open) for (const m of way.gazeTargets) gazeList.push(m);
     if (choice.group.visible) for (const m of choice.buttons) gazeList.push(m);
     if (state === 'select' && lineup) for (const m of lineup.hitTargets) gazeList.push(m);
-    if (state === 'play') { for (const m of glims.targets) gazeList.push(m); if (run) for (const m of run.gazeTargets) gazeList.push(m); }
+    if (state === 'play') { if (activeWorld === 'aurelia') for (const m of portals) gazeList.push(m); for (const m of glims.targets) gazeList.push(m); if (run) for (const m of run.gazeTargets) gazeList.push(m); }
     if (state === 'board' && board) for (const m of board.gazeTargets) gazeList.push(m);
   }
   gaze.targets = gazeList;

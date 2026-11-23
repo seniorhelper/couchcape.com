@@ -29,7 +29,7 @@ export class Flight {
   }
   update(dt) {
     const c = COMFORT[settings.comfort];
-    const want = Math.max(this.input, this.cruise ? 0.6 : 0) * c.maxSpeed;
+    const want = Math.max(this.input, this.cruise ? 0.6 : 0) * c.maxSpeed * (this.boost ? 1.6 : 1);
     const a = want > this.speed ? c.accel : c.accel * 1.4; // ease in, settle out
     this.speed += Math.sign(want - this.speed) * Math.min(Math.abs(want - this.speed), a * dt);
 
@@ -48,7 +48,7 @@ export class Flight {
     this.rig.position.addScaledVector(this.vel, dt);
     // soft world bounds + ground clearance
     const p = this.rig.position;
-    p.y = THREE.MathUtils.clamp(p.y, this.minY ?? 2, 160);
+    p.y = THREE.MathUtils.clamp(p.y, this.minY ?? 2, this.maxY ?? 160);
     const dx = p.x - this.cx, dz = p.z - this.cz, r = Math.hypot(dx, dz); if (r > this.bounds) { p.x = this.cx + dx * this.bounds / r; p.z = this.cz + dz * this.bounds / r; }
 
     // vignette from speed + turning, scaled by comfort setting

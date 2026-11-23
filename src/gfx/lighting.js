@@ -9,8 +9,8 @@ const AURELIA = { top: 0x8f9df0, mid: 0xc2b0f0, hor: 0xffcfc4, low: 0xf2d6ea, na
 export const PRESETS = {
   'aurelia-day': {
     sky: 'atmo', pal: { ...AURELIA, fog: 0xe9cfe2, fogSun: 0xffe0b8, fogSunAmt: 0.45, haze: 0.55, sunSize: 0.026 },
-    sunDir: [-0.42, 0.26, -0.87], sunColor: 0xffe6c8, sunI: 2.1, hemiSky: 0xf4eaff, hemiGround: 0x8a76a8, hemiI: 0.4,
-    fog: { color: 0xe9cfe2, near: 90, far: 900 }, bg: 0xe7cde0, tone: THREE.ACESFilmicToneMapping, exposure: 0.95, env: 0.45,
+    sunDir: [-0.42, 0.26, -0.87], sunColor: 0xffe6c8, sunI: 2.5, hemiSky: 0xcfd8ff, hemiGround: 0x7a5fa0, hemiI: 0.3,
+    fog: { color: 0xd9c2ea, near: 220, far: 2100 }, bg: 0xe7cde0, tone: THREE.ACESFilmicToneMapping, exposure: 0.86, env: 0.45,
   },
   dusk: {
     sky: 'atmo', pal: { top: 0x3b3f8f, mid: 0x9a6fb8, hor: 0xffa27a, low: 0xc98aa8, nadir: 0x4b4a8a, sun: 0xffb070, fog: 0xd99aa0, fogSun: 0xffa060, fogSunAmt: 0.8, haze: 0.7, sunSize: 0.03 },
@@ -31,8 +31,8 @@ export const PRESETS = {
     fog: null, bg: 0xf1e6da, tone: THREE.AgXToneMapping, exposure: 1.05, env: 0.8,
   },
   paradox: {
-    sky: 'studio', pal: { top: 0xf7f7fa, bot: 0xd9d9e2, box: 2.2 }, sunDir: [0.35, 0.85, 0.4], sunColor: 0xffffff, sunI: 1.6, hemiSky: 0xffffff, hemiGround: 0xc8c8d4, hemiI: 0.9,
-    fog: { color: 0xf1f1f5, near: 60, far: 600 }, bg: 0xf1f1f5, tone: THREE.AgXToneMapping, exposure: 1.0, env: 0.9,
+    sky: 'studio', pal: { top: 0xf7f7fa, bot: 0xd9d9e2, box: 2.2 }, sunDir: [0.35, 0.85, 0.4], sunColor: 0xffffff, sunI: 1.6, hemiSky: 0xffffff, hemiGround: 0xb0b0c8, hemiI: 0.6,
+    fog: { color: 0xe6e6f2, near: 160, far: 1100 }, bg: 0xf1f1f5, tone: THREE.AgXToneMapping, exposure: 1.0, env: 0.9,
   },
 };
 

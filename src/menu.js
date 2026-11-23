@@ -66,6 +66,20 @@ export class Menus {
         { label: 'Done', accent: '#ffd84d', act: () => this.close() }
       ]);
       this.header('Settings');
+    } else if (mode === 'signs') {
+      const n = () => {};
+      this.layout([
+        { label: 'Fly', value: 'squeeze a fist', act: n },
+        { label: 'Boost', value: 'both fists', act: n },
+        { label: 'Slow down', value: 'open hand', act: n },
+        { label: 'Steer', value: 'look that way', act: n },
+        { label: 'Power', value: 'thumb+pointer', act: n },
+        { label: 'Map', value: 'thumb+middle', act: n },
+        { label: 'View', value: 'thumb+ring', act: n },
+        { label: 'Glide', value: 'arms up wide', act: n },
+        { label: 'Done', accent: '#ffd84d', act: () => this.close() }
+      ]);
+      this.header('Hand Signs');
     } else if (mode === 'players') {
       const rows = [];
       for (const [id, p] of this.net.peers) {
